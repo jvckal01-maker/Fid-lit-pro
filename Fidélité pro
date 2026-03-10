@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FP. Universe - Final Elite</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        :root { --bg: #000; --primary: #bef264; --bronze: #cd7f32; --silver: #c0c0c0; --gold: #ffd700; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: #fff; margin: 0; overflow-x: hidden; }
+        .hidden { display: none !important; }
+        .container { padding: 25px; text-align: center; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+
+        /* --- ANIMATION D'ACCUEIL (CARTES DÉFILANTES) --- */
+        .hero-animation {
+            height: 220px; width: 100%; overflow: hidden; position: relative;
+            mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+            margin-bottom: 15px;
+        }
+        .card-strip {
+            display: flex; flex-direction: column; gap: 12px;
+            animation: scrollCards 12s linear infinite;
+        }
+        .mini-card {
+            width: 190px; height: 100px; border-radius: 15px; margin: 0 auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 0.6rem; border: 1px solid rgba(255,255,255,0.1); text-transform: uppercase;
+        }
+        .mc-1 { background: var(--primary); color: #000; }
+        .mc-2 { background: #111; color: var(--primary); border: 1px solid var(--primary); }
+        .mc-3 { background: #1a1a1a; color: var(--gold); border: 1px solid var(--gold); }
+        .mc-4 { background: #f43f5e; color: #fff; }
+
+        @keyframes scrollCards { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+
+        /* --- DESIGN WALLET & NIVEAUX --- */
+        .loyalty-card { 
+            width: 90%; max-width: 350px; border-radius: 28px; padding: 25px; margin: 15px auto;
+            display: flex; flex-direction: column; justify-content: space-between; aspect-ratio: 1.6/1;
+            position: relative; border: 1px solid rgba(255,255,255,0.1); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .lvl-bronze { background: linear-gradient(135deg, #111, #222); color: var(--bronze); border-color: var(--bronze); }
+        .lvl-silver { background: linear-gradient(135deg, #333, #666); color: #fff; border-color: var(--silver); }
+        .lvl-gold { background: linear-gradient(135deg, #967000, #ffd700); color: #000; border-color: #fff; box-shadow: 0 10px 30px rgba(255,215,0,0.3); }
+
+        .badge { font-size: 0.55rem; padding: 4px 10px; border-radius: 20px; font-weight: 800; text-transform: uppercase; border: 1px solid currentColor; margin-right: 5px; }
+        .card-logo { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* --- UI ELEMENTS --- */
+        input, select { background: #111; border: 1px solid #333; color: #fff; padding: 18px; width: 85%; border-radius: 15px; margin: 10px 0; font-size: 1rem; }
+        .btn { padding: 20px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; width: 90%; margin-top: 15px; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        .btn:active { transform: scale(0.96); }
+        .btn-main { background: var(--primary); color: #000; }
+        .share-btn { background: rgba(255,255,255,0.1); color: white; font-size: 0.6rem; padding: 10px 15px; border-radius: 12px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <audio id="audio-tick" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
+
+    <div id="screen-start" class="container">
+        <div class="hero-animation">
+            <div class="card-strip">
+                <div class="mini-card mc-1">Urban Style</div>
+                <div class="mini-card mc-2">Neon Night</div>
+                <div class="mini-card mc-3">Royal Gold</div>
+                <div class="mini-card mc-4">Vivid Red</div>
+                <div class="mini-card mc-1">Urban Style</div>
+                <div class="mini-card mc-2">Neon Night</div>
+                <div class="mini-card mc-3">Royal Gold</div>
+                <div class="mini-card mc-4">Vivid Red</div>
+            </div>
+        </div>
+        <h1 style="font-size: 3rem; margin: 0; letter-spacing: -3px;">FP. WALLET</h1>
+        <p style="opacity:0.4; font-size: 0.7rem; letter-spacing: 3px;">BYPASS THE ORDINARY</p>
+        <div style="margin-top: 40px; width: 100%;">
+            <button class="btn btn-main" onclick="app.playSound(); show('screen-client-login')">Mon Wallet Client</button>
+            <button class="btn" style="background:white; color:#000;" onclick="app.playSound(); show('screen-vendor-choice')">Espace Business</button>
+        </div>
+    </div>
+
+    <div id="screen-client-ui" class="hidden">
+        <div id="wallet-stack" style="padding: 20px 0;">
+            <div class="loyalty-card" style="border: 2px dashed #444; justify-content: center; align-items: center; color: #444; background: transparent;" onclick="app.initAutoAdd()">
+                <span style="font-size: 3.5rem;">+</span>
+                <b style="font-size: 0.7rem; letter-spacing: 1px;">AJOUTER UNE BOUTIQUE</b>
+                <div id="reader-client" class="hidden" style="width: 100%; margin-top: 15px;"></div>
+            </div>
+        </div>
+        <div style="text-align:center; padding-bottom: 50px;">
+            <button class="btn" style="background:none; color:gray; width:auto;" onclick="location.reload()">Déconnexion</button>
+        </div>
+    </div>
+
+    <div id="screen-vendor-ui" class="container hidden" style="justify-content: start; padding-top: 30px;">
+        <img id="v-logo" src="" class="card-logo" style="width:80px; height:80px; margin-bottom: 10px;">
+        <h2 id="v-title">SHOP</h2>
+        
+        <div style="background:white; padding:15px; border-radius:25px; margin-bottom: 25px;">
+            <div id="shop-qr-public"></div>
+            <p style="color:#000; font-size:0.6rem; font-weight:900; margin-top:10px;">QR D'INSCRIPTION COMPTOIR</p>
+        </div>
+
+        <div id="reader-vendor" style="width:100%; border-radius: 20px; overflow: hidden;"></div>
+        <div id="v-scan-res" class="hidden" style="width:100%;">
+            <p>Client : <b id="target-id" style="color:var(--primary);"></b></p>
+            <input type="number" id="pts-to-send" placeholder="Points à ajouter">
+            <button class="btn btn-main" onclick="app.addPoints()">Valider l'envoi</button>
+        </div>
+        <button id="btn-scan" class="btn btn-main" onclick="app.initScan()">Scanner un Client</button>
+        <button onclick="location.reload()" style="margin-top:20px; background:none; border:none; color:gray;">Quitter</button>
+    </div>
+
+    <div id="screen-client-login" class="container hidden">
+        <h2>Qui êtes-vous ?</h2>
+        <input type="text" id="cName" placeholder="Identifiant unique">
+        <button class="btn btn-main" onclick="app.loginClient()">Ouvrir mon Wallet</button>
+    </div>
+
+    <div id="screen-vendor-choice" class="container hidden">
+        <button class="btn btn-main" onclick="show('screen-vendor-login')">Se connecter</button>
+        <button class="btn" style="background:white;" onclick="show('screen-vendor-signup')">Inscrire ma boutique</button>
+    </div>
+
+    <div id="screen-vendor-signup" class="container hidden" style="justify-content: start; padding-top: 50px;">
+        <h2>Inscrire mon Enseigne</h2>
+        <input type="text" id="reg-name" placeholder="Nom de la boutique">
+        <input type="password" id="reg-pass" placeholder="Code secret (6 chiffres)">
+        <input type="text" id="reg-logo" placeholder="URL de votre Logo">
+        <button class="btn btn-main" onclick="app.registerShop()">Créer ma plateforme</button>
+    </div>
+
+    <div id="screen-vendor-login" class="container hidden">
+        <input type="text" id="vLogN" placeholder="Nom Boutique">
+        <input type="password" id="vLogP" placeholder="Code">
+        <button class="btn btn-main" onclick="app.loginVendor()">Entrer</button>
+    </div>
+
+    <script>
+        // CONFIG FIREBASE (Remplacer par tes vraies clés si besoin)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCnY5MYiqehxjruDzLGQC1mRCUgt53XBy0",
+            authDomain: "fidelitepro-ba986.firebaseapp.com",
+            databaseURL: "https://fidelitepro-ba986-default-rtdb.firebaseio.com",
+            projectId: "fidelitepro-ba986",
+            appId: "1:725041574896:web:d864bb4e6790a2f5d92335"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function show(id) {
+            document.querySelectorAll('body > div').forEach(d => d.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        const app = {
+            shopID: null, user: null,
+            
+            playSound() {
+                const a = document.getElementById('audio-tick');
+                a.currentTime = 0; a.play().catch(() => {});
+            },
+
+            // --- GESTION VENDEUR ---
+            registerShop() {
+                const n = document.getElementById('reg-name').value.trim().toLowerCase();
+                const p = document.getElementById('reg-pass').value;
+                const l = document.getElementById('reg-logo').value || "https://cdn-icons-png.flaticon.com/512/1162/1162456.png";
+                if(!n || !p) return alert("Champs vides");
+                db.ref('shops/'+n).set({password:p, logo:l}).then(() => this.enterVendor(n, l));
+            },
+            loginVendor() {
+                const n = document.getElementById('vLogN').value.trim().toLowerCase();
+                const p = document.getElementById('vLogP').value;
+                db.ref('shops/'+n).once('value', s => {
+                    if(s.exists() && s.val().password === p) this.enterVendor(n, s.val().logo);
+                    else alert("Erreur d'accès");
+                });
+            },
+            enterVendor(name, logo) {
+                this.shopID = name;
+                document.getElementById('v-title').innerText = name.toUpperCase();
+                document.getElementById('v-logo').src = logo;
+                document.getElementById('shop-qr-public').innerHTML = "";
+                new QRCode(document.getElementById('shop-qr-public'), {text:"ADD_SHOP:"+name, width:140, height:140});
+                show('screen-vendor-ui');
+            },
+
+            // --- GESTION CLIENT ---
+            loginClient() {
+                this.user = document.getElementById('cName').value.trim().toLowerCase();
+                if(!this.user) return;
+                show('screen-client-ui');
+                this.loadWallet();
+            },
+            loadWallet() {
+                db.ref('global_logs').on('value', s => {
+                    const logs = s.val() || {};
+                    const myShops = [...new Set(Object.values(logs).filter(l => l.user === this.user).map(l => l.shopID))];
+                    const stack = document.getElementById('wallet-stack');
+                    const blank = stack.children[0];
+                    stack.innerHTML = ""; stack.appendChild(blank);
+
+                    myShops.forEach(id => {
+                        db.ref('shops/'+id).once('value', snap => {
+                            const data = snap.val();
+                            db.ref(`shops/${id}/clients/${this.user}`).on('value', pSnap => {
+                                const pts = pSnap.val()?.points || 0;
+                                const refs = Object.values(logs).filter(l => l.user === this.user && l.type === "REF").length;
+                                this.renderCard(id, pts, data.logo, refs);
+                            });
+                        });
+                    });
+                });
+            },
+            renderCard(id, pts, logo, refs) {
+                const old = document.getElementById('card-'+id); if(old) old.remove();
+                this.playSound();
+                const lvl = pts >= 500 ? 'lvl-gold' : (pts >= 100 ? 'lvl-silver' : 'lvl-bronze');
+                const card = document.createElement('div');
+                card.id = 'card-'+id;
+                card.className = `loyalty-card ${lvl}`;
+                
+                let b = '';
+                if(pts >= 100) b += '<span class="badge">Vétéran</span>';
+                if(refs > 0) b += '<span class="badge">Ambassadeur</span>';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <div>
+                            <img src="${logo}" class="card-logo">
+                            <b style="display:block; margin-top:8px; font-size:1.1rem;">${id.toUpperCase()}</b>
+                            <div style="margin-top:8px;">${b}</div>
+                        </div>
+                        <div id="qr-${id}" style="background:white; padding:6px; border-radius:12px;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div><div style="font-size:3.5rem; font-weight:900; line-height:1;">${pts}</div><span style="font-size:0.6rem; opacity:0.7;">POINTS CUMULÉS</span></div>
+                        <button class="share-btn" onclick="app.share('${id}')">🎁 Parrainer</button>
+                    </div>
+                `;
+                document.getElementById('wallet-stack').appendChild(card);
+                new QRCode(document.getElementById('qr-'+id), {text:this.user, width:55, height:55});
+            },
+
+            // --- FONCTIONNALITÉS ---
+            initScan() {
+                const scanner = new Html5Qrcode("reader-vendor");
+                scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, (t) => {
+                    window.scannedUser = t;
+                    document.getElementById('target-id').innerText = t.toUpperCase();
+                    document.getElementById('v-scan-res').classList.remove('hidden');
+                    this.playSound(); scanner.stop();
+                });
+            },
+            initAutoAdd() {
+                const r = document.getElementById('reader-client'); r.classList.remove('hidden');
+                const sc = new Html5Qrcode("reader-client");
+                sc.start({facingMode:"environment"}, {fps:10, qrbox:200}, (t) => {
+                    if(t.startsWith("ADD_SHOP:")) {
+                        const s = t.split(":")[1];
+                        db.ref('global_logs').push({ user: this.user, shopID: s, amt: 0, timestamp: Date.now() });
+                        this.playSound(); alert("Boutique ajoutée !");
+                        sc.stop(); location.reload();
+                    }
+                });
+            },
+            addPoints() {
+                const p = parseInt(document.getElementById('pts-to-send').value);
+                if(!p) return;
+                db.ref(`shops/${this.shopID}/clients/${window.scannedUser}/points`).transaction(cur => (cur || 0) + p);
+                db.ref('global_logs').push({ user: window.scannedUser, shopID: this.shopID, amt: p, timestamp: Date.now() });
+                this.playSound(); alert("Points envoyés !"); location.reload();
+            },
+            share(id) {
+                const msg = `Rejoins-moi chez ${id.toUpperCase()} ! Mon code parrain : ${this.user}`;
+                if(navigator.share) navigator.share({text:msg}); else prompt("Copie ton lien :", msg);
+            }
+        };
+    </script>
+</body>
+</html>
